@@ -29,29 +29,28 @@ jobs:
         make OMEGA_USERNAME="PiStream" clean
         make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110
     
-    - name: Find and convert binaries to DFU
+    - name: Convert INTERNAL binary to DFU (compatible with your NumWorks)
       run: |
-        echo "=== Finding generated files ==="
-        find . -name "*dfu*.bin" -o -name "*.dfu"
+        echo "=== Using INTERNAL version for compatibility ==="
+        find . -name "*dfu*.bin"
         
-        echo "=== Converting external binary to DFU ==="
-        if [ -f "output/release/device/n0110/dfu-external.bin" ]; then
-          echo "Found dfu-external.bin, converting to DFU format..."
-          # Use dfu-suffix to add DFU suffix
-          cp output/release/device/n0110/dfu-external.bin omega-external.bin
-          dfu-suffix -a omega-external.bin -v 0x0483 -p 0xA291
-          mv omega-external.bin omega-external.dfu
-          ls -la omega-external.dfu
+        if [ -f "output/release/device/n0110/dfu-internal.bin" ]; then
+          echo "Converting dfu-internal.bin to DFU format..."
+          cp output/release/device/n0110/dfu-internal.bin omega-internal.bin
+          # Add DFU suffix with correct NumWorks vendor/product IDs
+          dfu-suffix -a omega-internal.bin -v 0x0483 -p 0xA291
+          mv omega-internal.bin omega.dfu
+          ls -la omega.dfu
+          file omega.dfu
+          echo "✅ omega.dfu created successfully for internal memory!"
+        else
+          echo "❌ dfu-internal.bin not found"
+          find . -name "*.bin" | head -10
         fi
-        
-        echo "=== All files found ==="
-        find . -name "*.dfu" -o -name "*omega*" | head -10
     
     - name: Upload DFU file
       uses: actions/upload-artifact@v4
       with:
-        name: omega-pistream-dfu
-        path: |
-          omega-external.dfu
-          **/*.dfu
-        if-no-files-found: warn
+        name: omega-pistream-dfu-internal
+        path: omega.dfu
+        if-no-files-found: error
