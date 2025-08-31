@@ -24,25 +24,31 @@ jobs:
         sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
         pip install intelhex
     
-    - name: Build Omega (just DFU, no flash)
+    - name: Build for specific NumWorks model
       run: |
         make OMEGA_USERNAME="PiStream" clean
-        make OMEGA_USERNAME="PiStream" epsilon.dfu
+        # Try building for specific device
+        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 epsilon.onboarding.internal.dfu
     
-    - name: Find the DFU file
+    - name: Alternative build if first fails
+      if: failure()
       run: |
-        echo "=== Searching for DFU files everywhere ==="
+        make OMEGA_USERNAME="PiStream" clean
+        make OMEGA_USERNAME="PiStream" PLATFORM=device epsilon.onboarding.external.dfu
+    
+    - name: Find all generated files
+      run: |
+        echo "=== All DFU files ==="
         find . -name "*.dfu" -type f
-        echo "=== Searching for epsilon files ==="
+        echo "=== All epsilon files ==="
         find . -name "epsilon*" -type f
-        echo "=== Output directory contents ==="
+        echo "=== Output structure ==="
         find output/ -type f 2>/dev/null || echo "No output directory"
     
-    - name: Upload DFU file
+    - name: Upload any DFU files found
       uses: actions/upload-artifact@v4
       with:
         name: omega-pistream-dfu
         path: |
           **/*.dfu
-          **/epsilon.*
         if-no-files-found: warn
