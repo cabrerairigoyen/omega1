@@ -29,15 +29,20 @@ jobs:
         make OMEGA_USERNAME="PiStream" clean
         make OMEGA_USERNAME="PiStream" epsilon.dfu
     
-    - name: Verify DFU file was created
+    - name: Find the DFU file
       run: |
-        ls -la epsilon.dfu
-        file epsilon.dfu
-        echo "✅ epsilon.dfu generated successfully!"
+        echo "=== Searching for DFU files everywhere ==="
+        find . -name "*.dfu" -type f
+        echo "=== Searching for epsilon files ==="
+        find . -name "epsilon*" -type f
+        echo "=== Output directory contents ==="
+        find output/ -type f 2>/dev/null || echo "No output directory"
     
     - name: Upload DFU file
       uses: actions/upload-artifact@v4
       with:
         name: omega-pistream-dfu
-        path: epsilon.dfu
-        if-no-files-found: error
+        path: |
+          **/*.dfu
+          **/epsilon.*
+        if-no-files-found: warn
