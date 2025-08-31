@@ -21,37 +21,37 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
+        sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq dfu-util
         pip install intelhex
     
-    - name: Check available targets
-      run: |
-        echo "=== Available make targets ==="
-        make help 2>/dev/null || echo "No help target"
-        echo "=== Looking for DFU-related targets in Makefile ==="
-        grep -r "\.dfu" Makefile build/ || echo "No DFU targets found in main files"
-        echo "=== Checking what targets exist ==="
-        make -n epsilon.dfu 2>/dev/null || echo "epsilon.dfu target doesn't exist"
-        make -n omega.dfu 2>/dev/null || echo "omega.dfu target doesn't exist"
-    
-    - name: Try simple build
+    - name: Build Omega
       run: |
         make OMEGA_USERNAME="PiStream" clean
         make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110
     
-    - name: Find all generated files
+    - name: Find and convert binaries to DFU
       run: |
-        echo "=== All files generated ==="
-        find output/ -type f 2>/dev/null | head -20 || echo "No output directory"
-        find . -name "*.dfu" -o -name "*.bin" -o -name "*.elf" | head -10
+        echo "=== Finding generated files ==="
+        find . -name "*dfu*.bin" -o -name "*.dfu"
+        
+        echo "=== Converting external binary to DFU ==="
+        if [ -f "output/release/device/n0110/dfu-external.bin" ]; then
+          echo "Found dfu-external.bin, converting to DFU format..."
+          # Use dfu-suffix to add DFU suffix
+          cp output/release/device/n0110/dfu-external.bin omega-external.bin
+          dfu-suffix -a omega-external.bin -v 0x0483 -p 0xA291
+          mv omega-external.bin omega-external.dfu
+          ls -la omega-external.dfu
+        fi
+        
+        echo "=== All files found ==="
+        find . -name "*.dfu" -o -name "*omega*" | head -10
     
-    - name: Upload any binaries found
+    - name: Upload DFU file
       uses: actions/upload-artifact@v4
       with:
-        name: omega-pistream-binaries
+        name: omega-pistream-dfu
         path: |
-          output/**/*
+          omega-external.dfu
           **/*.dfu
-          **/*.bin
-          **/*.elf
         if-no-files-found: warn
