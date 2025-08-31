@@ -24,23 +24,20 @@ jobs:
         sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
         pip install intelhex
     
-    - name: Build Omega
+    - name: Build Omega (just DFU, no flash)
       run: |
         make OMEGA_USERNAME="PiStream" clean
-        make OMEGA_USERNAME="PiStream" epsilon_flash
+        make OMEGA_USERNAME="PiStream" epsilon.dfu
     
-    - name: Find output files
+    - name: Verify DFU file was created
       run: |
-        echo "Looking for generated files..."
-        find . -name "*.dfu" -o -name "epsilon.*" | head -20
-        ls -la output/ || true
+        ls -la epsilon.dfu
+        file epsilon.dfu
+        echo "✅ epsilon.dfu generated successfully!"
     
-    - name: Upload binaries
+    - name: Upload DFU file
       uses: actions/upload-artifact@v4
       with:
-        name: omega-pistream-binaries
-        path: |
-          output/**/*.dfu
-          **/*.dfu
-          epsilon.dfu
-        if-no-files-found: warn
+        name: omega-pistream-dfu
+        path: epsilon.dfu
+        if-no-files-found: error
