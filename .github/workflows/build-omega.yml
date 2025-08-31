@@ -23,12 +23,18 @@ jobs:
         make OMEGA_USERNAME="PiStream" clean
         make OMEGA_USERNAME="PiStream" binpack -j$(nproc)
     
+    - name: Find output files
+      run: |
+        echo "Looking for generated files..."
+        find . -name "*.bin" -o -name "*.elf" -o -name "*.dfu" | head -20
+        ls -la output/ || true
+    
     - name: Upload binaries
       uses: actions/upload-artifact@v4
       with:
         name: omega-pistream-binaries
         path: |
-          output/release/device/n0110/omega.bin
-          output/release/device/n0110/omega.elf
-          output/release/device/n0110/omega.dfu
+          output/**/*.bin
+          output/**/*.elf
+          output/**/*.dfu
         if-no-files-found: warn
