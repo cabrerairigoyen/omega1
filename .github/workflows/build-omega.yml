@@ -21,12 +21,13 @@ jobs:
     - name: Build Omega
       run: |
         make OMEGA_USERNAME="PiStream" clean
-        make OMEGA_USERNAME="PiStream" binpack -j$(nproc)
+        make OMEGA_USERNAME="PiStream" epsilon_flash
     
     - name: Find output files
       run: |
         echo "Looking for generated files..."
-        find . -name "*.bin" -o -name "*.elf" -o -name "*.dfu" | head -20
+        find . -name "*.dfu" | head -10
+        find . -name "epsilon.*" | head -10
         ls -la output/ || true
     
     - name: Upload binaries
@@ -34,7 +35,6 @@ jobs:
       with:
         name: omega-pistream-binaries
         path: |
-          output/**/*.bin
-          output/**/*.elf
           output/**/*.dfu
+          **/*.dfu
         if-no-files-found: warn
