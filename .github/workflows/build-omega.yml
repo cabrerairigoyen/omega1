@@ -24,31 +24,34 @@ jobs:
         sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
         pip install intelhex
     
-    - name: Build for specific NumWorks model
+    - name: Check available targets
       run: |
-        make OMEGA_USERNAME="PiStream" clean
-        # Try building for specific device
-        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 epsilon.onboarding.internal.dfu
+        echo "=== Available make targets ==="
+        make help 2>/dev/null || echo "No help target"
+        echo "=== Looking for DFU-related targets in Makefile ==="
+        grep -r "\.dfu" Makefile build/ || echo "No DFU targets found in main files"
+        echo "=== Checking what targets exist ==="
+        make -n epsilon.dfu 2>/dev/null || echo "epsilon.dfu target doesn't exist"
+        make -n omega.dfu 2>/dev/null || echo "omega.dfu target doesn't exist"
     
-    - name: Alternative build if first fails
-      if: failure()
+    - name: Try simple build
       run: |
         make OMEGA_USERNAME="PiStream" clean
-        make OMEGA_USERNAME="PiStream" PLATFORM=device epsilon.onboarding.external.dfu
+        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110
     
     - name: Find all generated files
       run: |
-        echo "=== All DFU files ==="
-        find . -name "*.dfu" -type f
-        echo "=== All epsilon files ==="
-        find . -name "epsilon*" -type f
-        echo "=== Output structure ==="
-        find output/ -type f 2>/dev/null || echo "No output directory"
+        echo "=== All files generated ==="
+        find output/ -type f 2>/dev/null | head -20 || echo "No output directory"
+        find . -name "*.dfu" -o -name "*.bin" -o -name "*.elf" | head -10
     
-    - name: Upload any DFU files found
+    - name: Upload any binaries found
       uses: actions/upload-artifact@v4
       with:
-        name: omega-pistream-dfu
+        name: omega-pistream-binaries
         path: |
+          output/**/*
           **/*.dfu
+          **/*.bin
+          **/*.elf
         if-no-files-found: warn
