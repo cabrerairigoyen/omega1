@@ -1,0 +1,35 @@
+name: Build Omega with Pi Stream App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc-arm-none-eabi python3 python3-pip
+        pip3 install jq
+    
+    - name: Build Omega
+      run: |
+        make OMEGA_USERNAME="PiStream" clean
+        make OMEGA_USERNAME="PiStream" binpack -j$(nproc)
+    
+    - name: Upload binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: omega-pistream-binaries
+        path: |
+          output/release/device/n0110/omega.bin
+          output/release/device/n0110/omega.elf
+          output/release/device/n0110/omega.dfu
+        if-no-files-found: warn
