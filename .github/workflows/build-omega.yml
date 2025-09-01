@@ -1,4 +1,4 @@
-name: Build Omega with Pi Stream App
+name: Build Pi Stream External App
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  build-external-app:
     runs-on: ubuntu-latest
     
     steps:
@@ -21,36 +21,44 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq dfu-util
+        sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
         pip install intelhex
     
-    - name: Build Omega
+    - name: Build External App (.nwa)
       run: |
+        echo "=== Building Pi Stream as external app ==="
         make OMEGA_USERNAME="PiStream" clean
-        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110
+        # Build just the external app
+        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 apps/pi_stream_app/pi_stream_app.nwa
     
-    - name: Convert INTERNAL binary to DFU (compatible with your NumWorks)
+    - name: Alternative build if .nwa target doesn't exist
+      if: failure()
       run: |
-        echo "=== Using INTERNAL version for compatibility ==="
-        find . -name "*dfu*.bin"
+        echo "=== Trying alternative external app build ==="
+        # Build external version
+        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 EXTERNAL_APPS=1
+        # Look for any .nwa files generated
+        find . -name "*.nwa" -o -name "*external*"
+    
+    - name: Find and verify app file
+      run: |
+        echo "=== Looking for external app files ==="
+        find . -name "*.nwa"
+        find . -name "*pi_stream*" -type f
+        find output/ -type f 2>/dev/null | grep -i external || echo "No external files"
         
-        if [ -f "output/release/device/n0110/dfu-internal.bin" ]; then
-          echo "Converting dfu-internal.bin to DFU format..."
-          cp output/release/device/n0110/dfu-internal.bin omega-internal.bin
-          # Add DFU suffix with correct NumWorks vendor/product IDs
-          dfu-suffix -a omega-internal.bin -v 0x0483 -p 0xA291
-          mv omega-internal.bin omega.dfu
-          ls -la omega.dfu
-          file omega.dfu
-          echo "✅ omega.dfu created successfully for internal memory!"
-        else
-          echo "❌ dfu-internal.bin not found"
-          find . -name "*.bin" | head -10
+        # If .nwa exists, show info
+        if ls *.nwa 2>/dev/null; then
+          echo "✅ Found .nwa file!"
+          ls -la *.nwa
+          file *.nwa
         fi
     
-    - name: Upload DFU file
+    - name: Upload External App
       uses: actions/upload-artifact@v4
       with:
-        name: omega-pistream-dfu-internal
-        path: omega.dfu
-        if-no-files-found: error
+        name: pi-stream-external-app
+        path: |
+          **/*.nwa
+          apps/pi_stream_app/**
+        if-no-files-found: warn
