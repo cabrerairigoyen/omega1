@@ -24,41 +24,47 @@ jobs:
         sudo apt-get install -y build-essential gcc-arm-none-eabi libfreetype6-dev jq
         pip install intelhex
     
-    - name: Build External App (.nwa)
+    - name: Build external app using app_external template
       run: |
-        echo "=== Building Pi Stream as external app ==="
-        make OMEGA_USERNAME="PiStream" clean
-        # Build just the external app
-        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 apps/pi_stream_app/pi_stream_app.nwa
-    
-    - name: Alternative build if .nwa target doesn't exist
-      if: failure()
-      run: |
-        echo "=== Trying alternative external app build ==="
-        # Build external version
-        make OMEGA_USERNAME="PiStream" PLATFORM=device TARGET=n0110 EXTERNAL_APPS=1
-        # Look for any .nwa files generated
-        find . -name "*.nwa" -o -name "*external*"
-    
-    - name: Find and verify app file
-      run: |
-        echo "=== Looking for external app files ==="
-        find . -name "*.nwa"
-        find . -name "*pi_stream*" -type f
-        find output/ -type f 2>/dev/null | grep -i external || echo "No external files"
+        echo "=== Creating external app structure ==="
+        # Copy our app to the external template structure
+        cp -r apps/pi_stream_app/* Omega-App-Template/app_external/
         
-        # If .nwa exists, show info
-        if ls *.nwa 2>/dev/null; then
-          echo "✅ Found .nwa file!"
-          ls -la *.nwa
-          file *.nwa
-        fi
+        # Update the external template with our files
+        cd Omega-App-Template/app_external/
+        
+        # Rename files to match external template
+        mv pi_stream_app.cpp app.cpp
+        mv pi_stream_app.h app.h
+        mv pi_stream_controller.h sample_controller.h
+        mv pi_stream_controller.cpp sample_controller.cpp
+        
+        # Fix includes in the files
+        sed -i 's/pi_stream_app.h/app.h/g' *.cpp *.h
+        sed -i 's/pi_stream_controller.h/sample_controller.h/g' *.cpp *.h
+        sed -i 's/PiStreamController/SampleController/g' *.cpp *.h
+        
+        ls -la
+    
+    - name: Build the external app
+      run: |
+        cd Omega-App-Template/app_external/
+        echo "=== Building external app ==="
+        make
+        ls -la *.nwa 2>/dev/null || echo "No .nwa file generated yet"
+        ls -la
+    
+    - name: Find generated files
+      run: |
+        echo "=== Looking for any generated files ==="
+        find Omega-App-Template/ -name "*.nwa" -o -name "*.bin" -o -name "*.elf"
+        ls -la Omega-App-Template/app_external/
     
     - name: Upload External App
       uses: actions/upload-artifact@v4
       with:
         name: pi-stream-external-app
         path: |
-          **/*.nwa
-          apps/pi_stream_app/**
+          Omega-App-Template/app_external/*.nwa
+          Omega-App-Template/app_external/*
         if-no-files-found: warn
