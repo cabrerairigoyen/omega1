@@ -39,39 +39,34 @@ jobs:
         # Copy our app files
         cp ../apps/pi_stream_app/* .
         
-        # Create a simple build script instead of Makefile
-        cat > build.sh << 'EOF'
-#!/bin/bash
-echo "Building Pi Stream external app..."
-gcc-arm-none-eabi -mcpu=cortex-m7 -mthumb -Os -c *.cpp
-if [ $? -eq 0 ]; then
-  echo "Compilation successful"
-  # Create a simple .nwa file (just rename the object file)
-  if [ -f *.o ]; then
-    mv *.o pi_stream.nwa
-    echo "Created pi_stream.nwa"
-  fi
-else
-  echo "Compilation failed"
-fi
-EOF
-        chmod +x build.sh
-        
+        echo "=== Files copied ==="
         ls -la
     
     - name: Build external app
       run: |
         cd external_app
         echo "=== Building external app ==="
-        ./build.sh || echo "Build failed, checking what we have"
+        
+        # Try to compile the cpp files
+        echo "Compiling..."
+        gcc-arm-none-eabi -mcpu=cortex-m7 -mthumb -Os -c *.cpp || echo "Compilation failed"
+        
+        # Check what we have
         ls -la
         
-        # If build failed, just package the source files
-        if [ ! -f pi_stream.nwa ]; then
-          echo "Creating source package instead..."
-          tar -czf pi_stream_app_source.tar.gz *.cpp *.h *.i18n *.png
+        # If we have object files, create nwa
+        if ls *.o 1> /dev/null 2>&1; then
+          echo "Object files found, creating .nwa"
+          cat *.o > pi_stream.nwa
+          echo "Created pi_stream.nwa"
+        else
+          echo "No object files, creating source package"
+          tar -czf pi_stream_app_source.tar.gz *.cpp *.h *.i18n *.png 2>/dev/null || tar -czf pi_stream_app_source.tar.gz *
           echo "Source package created"
         fi
+        
+        echo "=== Final contents ==="
+        ls -la
     
     - name: Upload external app or source
       uses: actions/upload-artifact@v4
@@ -80,5 +75,4 @@ EOF
         path: |
           external_app/*.nwa
           external_app/*.tar.gz
-          external_app/*
         if-no-files-found: warn
